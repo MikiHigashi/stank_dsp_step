@@ -9,7 +9,7 @@
 #include "ltc2630.h"
 
 
-uint16_t left; // SPI2DMAにて旋回値を受け取る
+uint16_t left = 0x8080; // SPI2DMAにて旋回値を受け取る
 
 
 uint16_t table_pwm[] = {
@@ -1460,9 +1460,9 @@ uint8_t motor = 128; // 走行値
 
 uint16_t pulse_snd;
 uint16_t pulse_res;
-uint16_t pulse_mol = 0; // MO がＬ期間に何回のセンサーパルスが入ったか
-uint16_t pulse_mo1 = 0; // MO の１周期間に何回のセンサーパルスが入ったか
-uint16_t pulse_mo = 0; // MO の新規発生
+//uint16_t pulse_mol = 0; // MO がＬ期間に何回のセンサーパルスが入ったか
+//uint16_t pulse_mo1 = 0; // MO の１周期間に何回のセンサーパルスが入ったか
+//uint16_t pulse_mo = 0; // MO の新規発生
 
 
 uint8_t PS_M1 = 0;
@@ -1475,9 +1475,9 @@ uint8_t target_speed = 0; // 目標速度
 signed char target_cw_n_ccw = 0; // 目標回転方向 1:正 -1:逆 -:停止
 
 
-uint16_t lata0; // 旧LATA
-uint16_t lata1; // 最新LATA
-uint16_t latax; // 変化
+//uint16_t lata0; // 旧LATA
+//uint16_t lata1; // 最新LATA
+//uint16_t latax; // 変化
 
 
 void set_speed(uint8_t spd) {
@@ -1493,69 +1493,6 @@ void set_speed(uint8_t spd) {
 
 uint8_t flg_late1;
 uint8_t flg_latel;
-uint8_t ok_speed; // 脱調していなかった最後の速度
-
-
-void int_timer(void) {
-    if (now_speed > MIN_SPEED) {
-        now_speed = MIN_SPEED;
-    }
-}
-
-
-// ホールセンサーの状態変化割り込み
-void int_pin(void) {
-    lata1 = PORTA;
-    latax = lata0 ^ lata1;
-    lata0 = lata1;
-    if (latax & 4) { // MOが変化
-        if (lata1 & 4) { // L→H
-            pulse_mol = pulse_res; 
-//            if (flg_late1) {
-//                flg_late1 --;
-//            }
-//            else if (pulse_mol < 3) { // 脱調
-//                flg_late1 = 1;
-//                if (now_speed > MIN_SPEED) {
-//                    now_speed = ok_speed - 3 + pulse_mol;
-//                    set_speed(now_speed);
-//                }
-//            }
-//            else if (pulse_mol >= 4) {
-//                ok_speed = now_speed;
-//            }
-        }
-        else { // H→L
-            pulse_mo1 = pulse_res;
-            pulse_res = 0;            
-            pulse_mo ++;
-            if (flg_late1) {
-                flg_late1 --;
-            }
-            else if (pulse_mo1 <= 14) { // 脱調
-//                flg_late1 = 2;
-                flg_late1 = 1;
-                if (now_speed > 0) {
-//                if (now_speed > MIN_SPEED) {
-//                    now_speed = ok_speed - 15 + pulse_mo1;
-                    now_speed = ok_speed - 1;
-//                    now_speed --;
-                    set_speed(now_speed);
-                }
-            }
-            else if (pulse_mo1 >= 16) { // 正常
-                ok_speed = now_speed;
-            }
-            else { // どちらとも言えない
-                now_speed = ok_speed;
-            }
-        }
-    }    
-    if (latax & 24) { // ENCODEが変化
-        pulse_res ++;   
-        TMR2 = 0;
-    }    
-}
 
 
 // アラート発生
@@ -1571,21 +1508,14 @@ void in_alert(void) {
 
 int main(void)
 {
-    unsigned long u;
-    uint16_t pp;
-
     // initialize the device
     SYSTEM_Initialize();
     DMA_ChannelEnable(DMA_CHANNEL_0);
     DMA_PeripheralAddressSet(DMA_CHANNEL_0, (volatile unsigned int) &SPI2BUF);
     DMA_StartAddressASet(DMA_CHANNEL_0, (uint16_t)(&left));        
-    CN_SetInterruptHandler(int_pin);
-    TMR2_SetInterruptHandler(int_timer);
-
-    lata0 = LATA;
     
 //    char buf[32];
-    __delay_ms(100);    
+//    __delay_ms(100);    
 //    LCD_i2c_init(8);
 
     // 出力全OFF
@@ -1599,17 +1529,12 @@ int main(void)
     flg_late1 = flg_latel = 0;
 
     motor = 0;
-    now_speed = pre_speed = ok_speed = 0;
+    now_speed = pre_speed = 0;
     now_cw_n_ccw = 0;
     LTC2630_write(0);
     
+    WATCHDOG_TimerClear();
     __delay_ms(500);
-
-    uint16_t s1;
-    uint16_t s2;
-    uint16_t flg;
-    
-    TMR2_Start();
 
     while (1)
     {
@@ -1689,10 +1614,10 @@ int main(void)
             else {
                 now_cw_n_ccw = target_cw_n_ccw;
                 if (now_cw_n_ccw > 0) {
-                    CW_CCW_SetHigh();
+                    CW_CCW_SetLow();
                 }
                 else {
-                    CW_CCW_SetLow();
+                    CW_CCW_SetHigh();
                 }
             }
         }
