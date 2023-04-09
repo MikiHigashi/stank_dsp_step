@@ -53,14 +53,13 @@
 #include "system_types.h"
 #include "reset.h"
 
+#include "spi2.h"
+#include "watchdog.h"
+#include "dma.h"
+#include "pwm.h"
+#include "reset.h"
 #include "interrupt_manager.h"
 #include "traps.h"
-#include "pwm.h"
-#include "spi2.h"
-#include "dma.h"
-#include "tmr2.h"
-#include "reset.h"
-#include "watchdog.h"
 
 #warning "This file will be removed in future MCC releases. Use system.h instead."
 
